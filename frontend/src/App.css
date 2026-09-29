@@ -565,6 +565,51 @@
   background: var(--gbh-blue);
 }
 
+.database-category-filters {
+  margin-bottom: 1.45rem;
+}
+
+.database-category-filters h3 {
+  margin: 0 0 0.7rem;
+  color: var(--gbh-ink);
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
+.database-category-filters__buttons {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.1rem 0.55rem;
+  scrollbar-color: var(--gbh-blue) transparent;
+  scrollbar-width: thin;
+}
+
+.database-category-button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--gbh-blue);
+  border-radius: 0.2rem;
+  color: var(--gbh-blue);
+  background: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.database-category-button:hover {
+  border-color: var(--gbh-orange);
+  color: var(--gbh-orange);
+}
+
+.database-category-button--active,
+.database-category-button--active:hover {
+  border-color: var(--gbh-blue);
+  color: #fff;
+  background: var(--gbh-blue);
+}
+
 .database-results__summary {
   display: flex;
   align-items: center;
@@ -573,6 +618,17 @@
   color: var(--gbh-muted);
   font-size: 0.9rem;
   font-weight: 650;
+}
+
+.database-results__clear {
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  color: var(--gbh-blue);
+  background: transparent;
+  font-size: 0.87rem;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
 }
 
 .database-table__scroll {
@@ -636,6 +692,42 @@
   padding: 2.25rem 1rem !important;
   color: var(--gbh-muted);
   text-align: center;
+}
+
+.database-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.1rem;
+}
+
+.database-pagination button {
+  min-height: 40px;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--gbh-blue);
+  border-radius: 0.2rem;
+  color: var(--gbh-blue);
+  background: #fff;
+  font-size: 0.87rem;
+  font-weight: 700;
+}
+
+.database-pagination button:hover:not(:disabled) {
+  color: #fff;
+  background: var(--gbh-blue);
+}
+
+.database-pagination button:disabled {
+  border-color: #c7cbd3;
+  color: #7c828b;
+  background: #f1f1f0;
+  cursor: not-allowed;
+}
+
+.database-pagination p {
+  color: var(--gbh-muted);
+  font-size: 0.88rem;
 }
 
 .visually-hidden {
@@ -812,6 +904,16 @@
     min-height: 54px;
     gap: 0.55rem;
     padding-left: 0.75rem;
+  }
+
+  .database-category-filters__buttons {
+    margin-inline: -0.35rem;
+    padding-inline: 0.35rem;
+  }
+
+  .database-pagination {
+    justify-content: space-between;
+    gap: 0.5rem;
   }
 
   .database-table {

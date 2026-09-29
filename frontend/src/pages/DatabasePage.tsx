@@ -1,18 +1,45 @@
 import { useMemo, useState } from 'react'
 import databaseHeroPhoto from '../assets/gainesville-tourist-camp.jpg'
-import { sampleDatabaseRecords } from '../data/databaseRecords'
+import {
+  databaseCategories,
+  sampleDatabaseRecords,
+  type DatabaseCategory,
+} from '../data/databaseRecords'
+
+const pageSize = 5
 
 export default function DatabasePage() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<DatabaseCategory | 'All'>('All')
+  const [currentPage, setCurrentPage] = useState(1)
 
   const filteredRecords = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase()
-    if (!query) return sampleDatabaseRecords
 
-    return sampleDatabaseRecords.filter((record) =>
-      Object.values(record).some((value) => value.toLocaleLowerCase().includes(query)),
-    )
-  }, [searchTerm])
+    return sampleDatabaseRecords.filter((record) => {
+      const matchesCategory = selectedCategory === 'All' || record.category === selectedCategory
+      const matchesSearch =
+        !query || Object.values(record).some((value) => value.toLocaleLowerCase().includes(query))
+
+      return matchesCategory && matchesSearch
+    })
+  }, [searchTerm, selectedCategory])
+
+  const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize))
+  const firstVisibleRecord = filteredRecords.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const lastVisibleRecord = Math.min(currentPage * pageSize, filteredRecords.length)
+  const visibleRecords = filteredRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  function clearFilters() {
+    setSearchTerm('')
+    setSelectedCategory('All')
+    setCurrentPage(1)
+  }
+
+  function selectCategory(category: DatabaseCategory | 'All') {
+    setSelectedCategory(category)
+    setCurrentPage(1)
+  }
 
   return (
     <main className="database-page" id="main-content">
@@ -54,22 +81,53 @@ export default function DatabasePage() {
               id="database-search-input"
               type="search"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) => {
+                setSearchTerm(event.target.value)
+                setCurrentPage(1)
+              }}
               placeholder="Search business names, industries, years, and more"
               autoComplete="off"
             />
             {searchTerm && (
-              <button type="button" onClick={() => setSearchTerm('')}>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('')
+                  setCurrentPage(1)
+                }}
+              >
                 Clear
               </button>
             )}
           </div>
         </form>
 
-        <div className="database-results__summary" aria-live="polite">
+        <section className="database-category-filters" aria-labelledby="category-filter-title">
+          <h3 id="category-filter-title">Browse by category</h3>
+          <div className="database-category-filters__buttons" role="group" aria-label="Filter by category">
+            {(['All', ...databaseCategories] as const).map((category) => (
+              <button
+                className={`database-category-button${selectedCategory === category ? ' database-category-button--active' : ''}`}
+                key={category}
+                type="button"
+                aria-pressed={selectedCategory === category}
+                onClick={() => selectCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <div className="database-results__summary" aria-live="polite" aria-atomic="true">
           <p>
-            {filteredRecords.length} {filteredRecords.length === 1 ? 'record' : 'records'}
+            Showing {firstVisibleRecord}–{lastVisibleRecord} of {filteredRecords.length} results
           </p>
+          {(searchTerm || selectedCategory !== 'All') && (
+            <button className="database-results__clear" type="button" onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
         </div>
 
         <div
@@ -93,8 +151,8 @@ export default function DatabasePage() {
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.length > 0 ? (
-                filteredRecords.map((record) => (
+              {visibleRecords.length > 0 ? (
+                visibleRecords.map((record) => (
                   <tr key={record.id}>
                     <th scope="row">{record.businessName}</th>
                     <td>{record.broadIndustry}</td>
@@ -116,6 +174,26 @@ export default function DatabasePage() {
             </tbody>
           </table>
         </div>
+
+        <nav className="database-pagination" aria-label="Database result pages">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+          <p>
+            Page <strong>{currentPage}</strong> of <strong>{pageCount}</strong>
+          </p>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+            disabled={currentPage === pageCount}
+          >
+            Next
+          </button>
+        </nav>
       </section>
     </main>
   )
