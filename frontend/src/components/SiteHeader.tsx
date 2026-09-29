@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import { Link, NavLink } from 'react-router-dom'
 import gbhLogo from '../assets/GNV Business History Multicolored.png'
 
 const navigationLinks = [
-  { label: 'Home', href: '/', current: true },
+  { label: 'Home', to: '/' },
   { label: 'Oral Histories', href: 'https://gbhoralhistories.com/' },
-  { label: 'Database', href: '/database' },
-  { label: 'Map', href: '/map' },
-]
+  { label: 'Database', to: '/database' },
+  { label: 'Map', to: '/map' },
+] as const
 
 export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -18,14 +19,14 @@ export default function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <a className="site-header__brand" href="/">
+        <Link className="site-header__brand" to="/">
           <img src={gbhLogo} alt="" />
           <span className="site-header__wordmark">
             Gainesville
             <br />
             Business History
           </span>
-        </a>
+        </Link>
 
         <button
           className="site-header__menu-toggle"
@@ -48,20 +49,26 @@ export default function SiteHeader() {
           <ul className="site-header__links">
             {navigationLinks.map((link) => (
               <li key={link.label}>
-                <a
-                  className="site-header__link"
-                  href={link.href}
-                  aria-current={link.current ? 'page' : undefined}
-                  onClick={closeMenu}
-                >
-                  {link.label}
-                </a>
+                {'to' in link ? (
+                  <NavLink
+                    className="site-header__link"
+                    to={link.to}
+                    end={link.to === '/'}
+                    onClick={closeMenu}
+                  >
+                    {link.label}
+                  </NavLink>
+                ) : (
+                  <a className="site-header__link" href={link.href} onClick={closeMenu}>
+                    {link.label}
+                  </a>
+                )}
               </li>
             ))}
           </ul>
-          <a className="site-header__login" href="/login" onClick={closeMenu}>
+          <NavLink className="site-header__login" to="/login" onClick={closeMenu}>
             Log In
-          </a>
+          </NavLink>
         </nav>
       </div>
       <div className="site-header__rule" aria-hidden="true" />

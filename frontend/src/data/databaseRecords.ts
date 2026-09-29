@@ -1,0 +1,170 @@
+export const databaseCategories = [
+  'Food & Drink',
+  'Retail',
+  'Services',
+  'Art & Culture',
+  'Historic',
+] as const
+
+export type DatabaseCategory = (typeof databaseCategories)[number]
+
+export interface DatabaseRecord {
+  id: string
+  businessName: string
+  broadIndustry: string
+  specificIndustry: string
+  appearanceDecade: string
+  computedDecade: string
+  sourceYear: string
+  race: string
+  gender: string
+  category: DatabaseCategory
+}
+
+// Static preview rows make the interface usable before the API is connected.
+export const sampleDatabaseRecords: DatabaseRecord[] = [
+  {
+    id: 'lancaster-1886',
+    businessName: 'Robert A. and Charles C. Lancaster',
+    broadIndustry: 'Health',
+    specificIndustry: 'Physician',
+    appearanceDecade: '1880s',
+    computedDecade: '1880s',
+    sourceYear: '1886',
+    race: 'White',
+    gender: 'Male',
+    category: 'Historic',
+  },
+  {
+    id: 'ws-land-1886',
+    businessName: 'W.S. Land',
+    broadIndustry: 'Agriculture',
+    specificIndustry: 'Citrus Fruit Industry',
+    appearanceDecade: '1880s',
+    computedDecade: '1880s',
+    sourceYear: '1886',
+    race: 'White',
+    gender: 'Male',
+    category: 'Historic',
+  },
+  {
+    id: 'horace-langley-1886',
+    businessName: 'Horace P. Langley',
+    broadIndustry: 'Food & Trade',
+    specificIndustry: 'Bar',
+    appearanceDecade: '1880s',
+    computedDecade: '1880s',
+    sourceYear: '1886',
+    race: 'White',
+    gender: 'Male',
+    category: 'Food & Drink',
+  },
+  {
+    id: 'b-klein-1886',
+    businessName: 'Mrs. B. Klein',
+    broadIndustry: 'Retail Trade',
+    specificIndustry: 'General Merchandise',
+    appearanceDecade: '1880s',
+    computedDecade: '1880s',
+    sourceYear: '1886',
+    race: 'White',
+    gender: 'Female',
+    category: 'Retail',
+  },
+  {
+    id: 'lh-smith-1882',
+    businessName: 'L. H. Smith',
+    broadIndustry: 'Construction',
+    specificIndustry: 'Carpenter',
+    appearanceDecade: '1880s',
+    computedDecade: '1880s',
+    sourceYear: '1882',
+    race: 'N/A',
+    gender: 'N/A',
+    category: 'Services',
+  },
+  {
+    id: '16th-avenue-diner',
+    businessName: '16th Avenue Diner',
+    broadIndustry: 'Food & Trade',
+    specificIndustry: 'Restaurant',
+    appearanceDecade: '—',
+    computedDecade: '—',
+    sourceYear: '2025',
+    race: 'N/A',
+    gender: 'N/A',
+    category: 'Food & Drink',
+  },
+  {
+    id: 'book-gallery-west',
+    businessName: 'Book Gallery West',
+    broadIndustry: 'Retail Trade',
+    specificIndustry: 'Bookstores',
+    appearanceDecade: '—',
+    computedDecade: '—',
+    sourceYear: '—',
+    race: 'N/A',
+    gender: 'N/A',
+    category: 'Art & Culture',
+  },
+  {
+    id: 'strega-nonnas-oven',
+    businessName: 'Strega Nonna’s Oven',
+    broadIndustry: 'Food & Trade',
+    specificIndustry: 'Restaurant',
+    appearanceDecade: '—',
+    computedDecade: '—',
+    sourceYear: '—',
+    race: 'N/A',
+    gender: 'N/A',
+    category: 'Food & Drink',
+  },
+  {
+    id: 'sunshine-records',
+    businessName: 'Sunshine Records',
+    broadIndustry: 'Retail Trade',
+    specificIndustry: 'Records',
+    appearanceDecade: '—',
+    computedDecade: '—',
+    sourceYear: '—',
+    race: 'N/A',
+    gender: 'N/A',
+    category: 'Art & Culture',
+  },
+  {
+    id: 'faiths-cleaning-services',
+    businessName: 'Faith’s Cleaning Services',
+    broadIndustry: 'Services',
+    specificIndustry: 'Cleaning Services',
+    appearanceDecade: '—',
+    computedDecade: '—',
+    sourceYear: '—',
+    race: 'N/A',
+    gender: 'N/A',
+    category: 'Services',
+  },
+  {
+    id: 'squarehouse-pizza',
+    businessName: 'Squarehouse Pizza',
+    broadIndustry: 'Food & Trade',
+    specificIndustry: 'Restaurant',
+    appearanceDecade: '—',
+    computedDecade: '—',
+    sourceYear: '—',
+    race: 'N/A',
+    gender: 'N/A',
+    category: 'Food & Drink',
+  },
+  {
+    id: 'persimmon-early-learning',
+    businessName: 'Persimmon Early Learning Academy',
+    broadIndustry: 'Education',
+    specificIndustry: 'Early Learning',
+    appearanceDecade: '—',
+    computedDecade: '—',
+    sourceYear: '—',
+    race: 'N/A',
+    gender: 'N/A',
+    category: 'Services',
+  },
+]
