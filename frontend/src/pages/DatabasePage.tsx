@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import databaseHeroPhoto from '../assets/gainesville-tourist-camp.jpg'
+import databaseHeroPhoto from '../assets/uf-research.jpg'
 import {
   databaseCategories,
   sampleDatabaseRecords,
