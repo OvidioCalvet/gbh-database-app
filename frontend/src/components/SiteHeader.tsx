@@ -18,8 +18,13 @@ export default function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <a className="site-header__brand" href="/" aria-label="Gainesville Business History home">
-          <img src={gbhLogo} alt="Gainesville Business History" />
+        <a className="site-header__brand" href="/">
+          <img src={gbhLogo} alt="" />
+          <span className="site-header__wordmark">
+            Gainesville
+            <br />
+            Business History
+          </span>
         </a>
 
         <button

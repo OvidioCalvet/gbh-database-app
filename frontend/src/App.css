@@ -54,13 +54,30 @@
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
+  gap: 0.85rem;
   border-radius: 0.25rem;
+  color: var(--gbh-blue);
+  text-decoration: none;
 }
 
 .site-header__brand img {
   width: 96px;
   height: 76px;
   object-fit: contain;
+}
+
+.site-header__wordmark {
+  color: var(--gbh-blue);
+  font-size: clamp(1rem, 1.4vw, 1.22rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  white-space: nowrap;
+  transition: color 160ms ease;
+}
+
+.site-header__brand:hover .site-header__wordmark {
+  color: var(--gbh-orange);
 }
 
 .site-header__navigation {
@@ -466,6 +483,10 @@
     height: 64px;
   }
 
+  .site-header__wordmark {
+    font-size: 1rem;
+  }
+
   .site-header__menu-toggle {
     display: inline-flex;
     margin-left: auto;
@@ -514,6 +535,19 @@
 }
 
 @media (max-width: 600px) {
+  .site-header__brand {
+    gap: 0.55rem;
+  }
+
+  .site-header__brand img {
+    width: 72px;
+    height: 58px;
+  }
+
+  .site-header__wordmark {
+    font-size: 0.88rem;
+  }
+
   .hero-section {
     min-height: 540px;
     align-items: end;
