@@ -3,7 +3,7 @@ import gbhLogo from '../assets/GNV Business History Multicolored.png'
 
 const navigationLinks = [
   { label: 'Home', href: '/', current: true },
-  { label: 'Oral Histories', href: '/oral-histories' },
+  { label: 'Oral Histories', href: 'https://gbhoralhistories.com/' },
   { label: 'Database', href: '/database' },
   { label: 'Map', href: '/map' },
 ]

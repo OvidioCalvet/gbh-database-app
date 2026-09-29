@@ -1,4 +1,4 @@
-import heroPhoto from '../assets/gainesville-tourist-camp.jpg'
+import heroPhoto from '../assets/uf-skyview.jpg'
 
 export default function HeroSection() {
   return (
