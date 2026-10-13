@@ -2,6 +2,7 @@ import './App.css'
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import DatabasePage from './pages/DatabasePage'
 import HomePage from './pages/HomePage'
+import LoginPage from './pages/LoginPage'
 import SiteFooter from './components/SiteFooter'
 import SiteHeader from './components/SiteHeader'
 import { AuthProvider } from './features/auth/AuthContext'
@@ -18,6 +19,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/database" element={<DatabasePage />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route
               path="*"
               element={

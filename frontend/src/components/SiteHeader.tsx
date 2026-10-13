@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import gbhLogo from '../assets/GNV Business History Multicolored.png'
+import { useAuth } from '../features/auth/useAuth'
 
 const navigationLinks = [
   { label: 'Home', to: '/' },
@@ -11,9 +12,28 @@ const navigationLinks = [
 
 export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const { status, user, logOut } = useAuth()
+  const navigate = useNavigate()
 
   function closeMenu() {
     setMenuOpen(false)
+  }
+
+  async function handleLogout() {
+    setLogoutError('')
+    setIsLoggingOut(true)
+
+    try {
+      await logOut()
+      closeMenu()
+      navigate('/')
+    } catch {
+      setLogoutError('Could not sign out. Please try again.')
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   return (
@@ -65,10 +85,50 @@ export default function SiteHeader() {
                 )}
               </li>
             ))}
+            {status === 'authenticated' && (
+              <li>
+                <NavLink
+                  className="site-header__link site-header__data-link"
+                  to="/data-entry"
+                  onClick={closeMenu}
+                >
+                  <span aria-hidden="true">+</span> Add Data
+                </NavLink>
+              </li>
+            )}
           </ul>
-          <NavLink className="site-header__login" to="/login" onClick={closeMenu}>
-            Log In
-          </NavLink>
+          <div className="site-header__session">
+            {status === 'authenticated' && user ? (
+              <>
+                <span className="site-header__session-divider" aria-hidden="true">
+                  |
+                </span>
+                <details className="site-header__account">
+                  <summary className="site-header__account-trigger">
+                    <span>{user.displayName || user.username}</span>
+                    <span className="site-header__account-chevron" aria-hidden="true">
+                      ▾
+                    </span>
+                  </summary>
+                  <div className="site-header__account-menu">
+                    <p>Signed in as {user.username}</p>
+                    {logoutError && (
+                      <p className="site-header__logout-error" role="alert">
+                        {logoutError}
+                      </p>
+                    )}
+                    <button type="button" onClick={handleLogout} disabled={isLoggingOut}>
+                      {isLoggingOut ? 'Signing out…' : 'Log Out'}
+                    </button>
+                  </div>
+                </details>
+              </>
+            ) : (
+              <NavLink className="site-header__login" to="/login" onClick={closeMenu}>
+                Log In
+              </NavLink>
+            )}
+          </div>
         </nav>
       </div>
       <div className="site-header__rule" aria-hidden="true" />
