@@ -31,5 +31,6 @@ Invalidate the session and clear its cookie; return `204` on success.
 - Set the session cookie as `HttpOnly`, `Secure` in production, `SameSite=Lax`, and `Path=/`.
 - Serve the React app and API on the same origin in production, proxying `/api` to FastAPI.
 - In local development, Vite proxies `/api` to `http://127.0.0.1:8000` by default; set `API_PROXY_TARGET` to override it.
+- The Compose frontend serves the built React app through Nginx and proxies `/api` to the backend container, so production requests stay same-origin.
 - Validate request origins/CSRF protections for state-changing routes. Authentication and write permissions must be enforced by FastAPI; hiding React controls is not authorization.
 - The `/data-entry` screen is gated in the UI, but its future record endpoints must independently require an authenticated researcher.
