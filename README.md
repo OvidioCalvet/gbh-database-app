@@ -72,6 +72,18 @@ docker compose -f compose.yaml run --rm backend \
   python -m app.cli create-user admin --admin
 ```
 
+## Import business records
+
+The importer replaces the `businesses` table from the CSV export. It cleans each value to match the column type: years become integers, coordinates become numbers, flags become booleans, invalid placeholders become `NULL`, and exact duplicate rows are removed. The original CSV is never modified.
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml run --rm \
+  -v "$PWD/Data_Cleaning_New - Data1.csv:/run/businesses.csv:ro" \
+  backend python -m app.cli import-businesses /run/businesses.csv
+```
+
+Re-running the command replaces the table rather than appending duplicates. The public database page reads from `GET /api/v1/businesses` and shows 25 records per page.
+
 ## Production deployment notes
 
 Copy `.env.example` to `.env`, set unique PostgreSQL admin and app passwords and the real HTTPS frontend origin in `ALLOWED_ORIGINS`, and use `APP_ENV=production` with `SESSION_COOKIE_SECURE=true`. Deploy with:
