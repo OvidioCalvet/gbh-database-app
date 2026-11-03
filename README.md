@@ -84,6 +84,15 @@ docker compose -f compose.yaml -f compose.dev.yaml run --rm \
 
 Re-running the command replaces the table rather than appending duplicates. The public database page reads from `GET /api/v1/businesses` and shows 25 records per page.
 
+## Add and update records
+
+Sign in at `/login`, then open `/data-entry`. Any active researcher account can:
+
+- **Add Record** — create one new business record. Only the business name is required; blank optional fields are stored as unknown.
+- **Find & Update** — search by business name, owner, address, or industry, select one record, and save changes to that record only.
+
+Both workflows call authenticated FastAPI endpoints that also validate the request origin. Each change records the researcher username in `createdBy` / `updatedBy`. This is deliberately not a bulk-import workflow; use `import-businesses` to replace the dataset.
+
 ## Production deployment notes
 
 Copy `.env.example` to `.env`, set unique PostgreSQL admin and app passwords and the real HTTPS frontend origin in `ALLOWED_ORIGINS`, and use `APP_ENV=production` with `SESSION_COOKIE_SECURE=true`. Deploy with:
