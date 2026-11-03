@@ -14,6 +14,8 @@ from app.config import Settings
 from app.database import create_pool
 from app.main import create_app
 
+ORIGIN = "http://localhost:8080"
+
 
 def _write_csv(path: Path, rows: list[dict[str, str]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
@@ -191,3 +193,139 @@ def test_industry_list_is_available(api_client: TestClient) -> None:
     for industry in body["items"]:
         assert set(industry) == {"name", "count"}
         assert industry["count"] >= 1
+
+
+def _log_in(api_client: TestClient) -> None:
+    response = api_client.post(
+        "/api/v1/auth/login",
+        json={"username": "admin", "password": "password"},
+        headers={"Origin": ORIGIN},
+    )
+    assert response.status_code == 200
+
+
+def _delete_record(record_id: int) -> None:
+    settings = Settings.from_env()
+
+    async def delete() -> None:
+        pool = await create_pool(settings)
+        try:
+            async with pool.acquire() as connection:
+                await connection.execute("DELETE FROM businesses WHERE id = $1", record_id)
+        finally:
+            await pool.close()
+
+    asyncio.run(delete())
+
+
+def test_researcher_can_create_and_update_a_record(api_client: TestClient) -> None:
+    marker = f"manual-{uuid.uuid4().hex[:10]}"
+
+    unauthenticated = api_client.post(
+        "/api/v1/businesses",
+        json={"businessName": f"Manual Test {marker}"},
+        headers={"Origin": ORIGIN},
+    )
+    assert unauthenticated.status_code == 401
+
+    _log_in(api_client)
+
+    created = api_client.post(
+        "/api/v1/businesses",
+        json={
+            "businessName": f"Manual Test {marker}",
+            "sourceYear": 1955,
+            "appearanceDecade": "1950s",
+            "broadIndustry": "Test Industry",
+            "specificIndustry": "Testing",
+            "ifClosed": True,
+            "address": "1 Test Way, Gainesville, Florida",
+            "postal": "32601",
+            "pointX": -82.3257,
+            "pointY": 29.6516,
+            "socialMedia": False,
+            "notes": "Created through the researcher API.",
+        },
+        headers={"Origin": ORIGIN},
+    )
+    assert created.status_code == 201
+    body = created.json()
+    record_id = body["id"]
+
+    try:
+        assert body["bizId"].startswith("BIZ_MANUAL_")
+        assert body["businessName"] == f"Manual Test {marker}"
+        assert body["sourceYear"] == 1955
+        assert body["ifClosed"] is True
+        assert body["socialMedia"] is False
+        assert body["createdBy"] == "admin"
+        assert body["updatedBy"] == "admin"
+        assert body["createdAt"]
+        assert body["updatedAt"]
+
+        detail = api_client.get(f"/api/v1/businesses/{record_id}")
+        assert detail.status_code == 200
+        assert detail.json()["notes"] == "Created through the researcher API."
+
+        updated = api_client.patch(
+            f"/api/v1/businesses/{record_id}",
+            json={
+                "businessName": f"Manual Test {marker} Renamed",
+                "notes": "Updated through the researcher API.",
+                "ifClosed": False,
+                "address": None,
+            },
+            headers={"Origin": ORIGIN},
+        )
+        assert updated.status_code == 200
+        updated_body = updated.json()
+        assert updated_body["businessName"] == f"Manual Test {marker} Renamed"
+        assert updated_body["notes"] == "Updated through the researcher API."
+        assert updated_body["ifClosed"] is False
+        assert updated_body["address"] is None
+        assert updated_body["sourceYear"] == 1955
+        assert updated_body["bizId"] == body["bizId"]
+        assert updated_body["updatedBy"] == "admin"
+    finally:
+        _delete_record(record_id)
+
+
+def test_record_writes_reject_invalid_values_and_origins(api_client: TestClient) -> None:
+    _log_in(api_client)
+
+    invalid_year = api_client.post(
+        "/api/v1/businesses",
+        json={"businessName": "Bad Year", "sourceYear": 1500},
+        headers={"Origin": ORIGIN},
+    )
+    invalid_postal = api_client.post(
+        "/api/v1/businesses",
+        json={"businessName": "Bad Postal", "postal": "26-01"},
+        headers={"Origin": ORIGIN},
+    )
+    invalid_decade = api_client.post(
+        "/api/v1/businesses",
+        json={"businessName": "Bad Decade", "appearanceDecade": "1955"},
+        headers={"Origin": ORIGIN},
+    )
+    untrusted_origin = api_client.post(
+        "/api/v1/businesses",
+        json={"businessName": "Bad Origin"},
+        headers={"Origin": "https://untrusted.example"},
+    )
+    missing_origin = api_client.post(
+        "/api/v1/businesses",
+        json={"businessName": "No Origin"},
+    )
+    missing_record = api_client.patch(
+        "/api/v1/businesses/999999999",
+        json={"notes": "Nobody home"},
+        headers={"Origin": ORIGIN},
+    )
+
+    assert invalid_year.status_code == 422
+    assert invalid_postal.status_code == 422
+    assert invalid_decade.status_code == 422
+    assert untrusted_origin.status_code == 403
+    assert missing_origin.status_code == 403
+    assert missing_record.status_code == 404
