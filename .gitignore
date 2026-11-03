@@ -12,3 +12,6 @@ frontend/dist/
 *.db
 *.sqlite
 *.sqlite3
+
+# Local business data exports are imported, not versioned.
+/Data_Cleaning_New - Data1.csv
