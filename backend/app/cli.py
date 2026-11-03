@@ -8,6 +8,7 @@ from pathlib import Path
 import asyncpg
 
 from app.bootstrap import ensure_development_admin
+from app.business_import import import_businesses
 from app.config import Settings
 from app.database import apply_migrations, create_pool
 from app.legacy_import import import_legacy_users
@@ -31,6 +32,12 @@ def build_parser() -> argparse.ArgumentParser:
         "import-legacy-users", help="Import accounts from the old SQLite users.db file."
     )
     import_users.add_argument("sqlite_path", type=Path)
+
+    import_records = commands.add_parser(
+        "import-businesses",
+        help="Replace the business table from a CSV export.",
+    )
+    import_records.add_argument("csv_path", type=Path)
 
     return parser
 
@@ -108,6 +115,15 @@ async def run_command(arguments: argparse.Namespace) -> None:
                 f"{summary.imported} imported, "
                 f"{summary.linked_to_dev_admin} linked to the local test admin, "
                 f"{summary.skipped} skipped."
+            )
+        elif arguments.command == "import-businesses":
+            summary = await import_businesses(pool, arguments.csv_path)
+            print(
+                "Business import complete: "
+                f"{summary.rows_imported} of {summary.rows_read} rows imported, "
+                f"{summary.duplicates_removed} duplicate rows removed, "
+                f"{summary.rows_skipped} rows skipped, "
+                f"{summary.values_normalized} invalid values set to NULL."
             )
     finally:
         await pool.close()

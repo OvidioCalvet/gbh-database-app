@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI
 
 from app.auth import router as auth_router
 from app.bootstrap import ensure_development_admin
+from app.businesses import router as businesses_router
 from app.config import Settings
 from app.database import apply_migrations, create_pool, get_pool
 
@@ -34,6 +35,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.state.settings = config
     application.include_router(auth_router)
+    application.include_router(businesses_router)
 
     @application.get("/healthz", tags=["health"])
     async def health_check(pool: asyncpg.Pool = Depends(get_pool)) -> dict[str, str]:
@@ -42,6 +44,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "ok"}
 
     return application
-
 
 app = create_app()
