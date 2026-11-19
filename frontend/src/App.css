@@ -932,6 +932,10 @@
   line-height: 1.5;
 }
 
+.record-form__conflict {
+  margin: -0.5rem 0 1rem;
+}
+
 .record-form__actions {
   display: flex;
   flex-wrap: wrap;

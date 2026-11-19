@@ -88,6 +88,7 @@ Returns one record with every editable field plus audit metadata:
 ```json
 {
   "id": 1,
+  "version": 1,
   "bizId": "BIZ_D8B8C78BAE90",
   "businessName": "Johnson Brothers",
   "sourceYear": 1903,
@@ -148,11 +149,18 @@ Requires the session cookie and `Origin: <allowed origin>`. Only `businessName` 
 }
 ```
 
-Returns `201` with the full record. Returns `401` without a session, `403` for an untrusted or missing origin, and `422` for invalid years, postal codes, decades, coordinates, or an empty business name.
+Returns `201` with the full record; its `version` starts at `1`. Returns `401` without a session, `403` for an untrusted or missing origin, and `422` for invalid years, postal codes, decades, coordinates, or an empty business name.
 
 ## `PATCH /api/v1/businesses/{id}`
 
-Requires the session cookie and `Origin: <allowed origin>`. Send only the fields to change; omitted fields keep their current values and explicit `null` clears an optional field. `businessName` and `bizId` cannot be cleared. Returns the updated record, `404` for a missing record, and sets `updatedAt` / `updatedBy` from the session.
+Requires the session cookie and `Origin: <allowed origin>`. Send only the fields to change plus `expectedVersion`, the `version` value most recently read from the record; omitted fields keep their current values and explicit `null` clears an optional field. `businessName` and `bizId` cannot be cleared. Every successful save increments `version`. If the stored version no longer matches `expectedVersion`, the server returns `409 Conflict` without writing any changes and the client must reload the record before saving again. Returns the updated record, `404` for a missing record, `422` when `expectedVersion` is missing or invalid, and sets `updatedAt` / `updatedBy` from the session.
+
+```json
+{
+  "notes": "Updated by a researcher.",
+  "expectedVersion": 1
+}
+```
 
 ## Audit behavior
 

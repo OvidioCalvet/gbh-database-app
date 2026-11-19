@@ -13,6 +13,7 @@ export interface BusinessRecord {
 }
 
 export interface BusinessDetail extends BusinessRecord {
+  version: number
   foundingYear: number | null
   firstAppearance: number | null
   endYear: number | null
@@ -46,10 +47,15 @@ export interface BusinessDetail extends BusinessRecord {
 
 export type BusinessWriteInput = Omit<
   BusinessDetail,
-  'id' | 'bizId' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'
+  'id' | 'bizId' | 'version' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'
 > & {
   bizId?: string | null
   businessName: string
+}
+
+/** The version read from the record, required to detect concurrent edits. */
+export interface BusinessUpdateInput extends BusinessWriteInput {
+  expectedVersion: number
 }
 
 export interface BusinessPage {
@@ -118,7 +124,7 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 async function sendJson<T>(
   path: string,
   method: 'POST' | 'PATCH',
-  body: BusinessWriteInput,
+  body: BusinessWriteInput | BusinessUpdateInput,
   signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetch(path, {
@@ -190,7 +196,7 @@ export async function createBusiness(
 
 export async function updateBusiness(
   id: number,
-  input: BusinessWriteInput,
+  input: BusinessUpdateInput,
   signal?: AbortSignal,
 ): Promise<BusinessDetail> {
   return sendJson<BusinessDetail>(`/api/v1/businesses/${id}`, 'PATCH', input, signal)

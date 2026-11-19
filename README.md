@@ -91,7 +91,7 @@ Sign in at `/login`, then open `/data-entry`. Any active researcher account can:
 - **Add Record** — create one new business record. Only the business name is required; blank optional fields are stored as unknown.
 - **Find & Update** — search by business name, owner, address, or industry, select one record, and save changes to that record only.
 
-Both workflows call authenticated FastAPI endpoints that also validate the request origin. Each change records the researcher username in `createdBy` / `updatedBy`. This is deliberately not a bulk-import workflow; use `import-businesses` to replace the dataset.
+Both workflows call authenticated FastAPI endpoints that also validate the request origin. Each change records the researcher username in `createdBy` / `updatedBy`. Saving checks the record's `version`: if another researcher saved the same record after you opened it, the save is rejected with `409 Conflict` instead of overwriting their work, and the form offers to discard your local changes and reload the latest record. This is deliberately not a bulk-import workflow; use `import-businesses` to replace the dataset.
 
 ## Production deployment notes
 

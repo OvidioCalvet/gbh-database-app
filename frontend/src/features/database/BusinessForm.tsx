@@ -322,6 +322,9 @@ function describeError(error: unknown): string {
     if (error.status === 403) {
       return 'This browser origin is not allowed to save records.'
     }
+    if (error.status === 409) {
+      return 'This record was changed by someone else since you opened it. Your changes were not saved.'
+    }
     return error.message
   }
 
@@ -332,21 +335,26 @@ interface BusinessFormProps {
   mode: 'create' | 'edit'
   initialValues?: FormValues
   recordId?: number
+  version?: number
   onSaved?: (detail: BusinessDetail) => void
   onCancel?: () => void
+  onReload?: () => void
 }
 
 export default function BusinessForm({
   mode,
   initialValues = emptyFormValues,
   recordId,
+  version,
   onSaved,
   onCancel,
+  onReload,
 }: BusinessFormProps) {
   const [values, setValues] = useState<FormValues>(initialValues)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState('')
   const [success, setSuccess] = useState('')
+  const [conflict, setConflict] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const formId = useId()
 
@@ -358,6 +366,12 @@ export default function BusinessForm({
     event.preventDefault()
     setFormError('')
     setSuccess('')
+    setConflict(false)
+
+    if (mode === 'edit' && version === undefined) {
+      setFormError('This record could not be checked for recent changes. Reload it and try again.')
+      return
+    }
 
     const nextErrors = validate(values)
     setErrors(nextErrors)
@@ -372,7 +386,10 @@ export default function BusinessForm({
       const saved =
         mode === 'create'
           ? await createBusiness(input)
-          : await updateBusiness(recordId ?? 0, input)
+          : await updateBusiness(recordId ?? 0, {
+              ...input,
+              expectedVersion: version ?? 0,
+            })
 
       if (mode === 'create') {
         setValues(emptyFormValues)
@@ -385,6 +402,9 @@ export default function BusinessForm({
       setErrors({})
       onSaved?.(saved)
     } catch (error) {
+      if (error instanceof BusinessesApiError && error.status === 409) {
+        setConflict(true)
+      }
       setFormError(describeError(error))
     } finally {
       setIsSubmitting(false)
@@ -397,6 +417,17 @@ export default function BusinessForm({
         <p className="record-form__alert" role="alert">
           {formError}
         </p>
+      )}
+      {conflict && onReload && (
+        <div className="record-form__conflict">
+          <button
+            className="record-form__secondary"
+            type="button"
+            onClick={onReload}
+          >
+            Discard my changes and reload
+          </button>
+        </div>
       )}
       {success && (
         <p className="record-form__success" role="status">

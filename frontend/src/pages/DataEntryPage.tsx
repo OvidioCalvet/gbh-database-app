@@ -40,6 +40,7 @@ export default function DataEntryPage() {
   const [selected, setSelected] = useState<BusinessDetail | null>(null)
   const [detailError, setDetailError] = useState('')
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+  const [reloadNonce, setReloadNonce] = useState(0)
 
   function activateTab(tab: WorkspaceTab, index: number) {
     setActiveTab(tab)
@@ -94,6 +95,21 @@ export default function DataEntryPage() {
 
     try {
       setSelected(await fetchBusiness(record.id))
+    } catch (error) {
+      setDetailError(describeError(error))
+    } finally {
+      setIsLoadingDetail(false)
+    }
+  }
+
+  async function reloadSelected() {
+    if (!selected) return
+    setDetailError('')
+    setIsLoadingDetail(true)
+
+    try {
+      setSelected(await fetchBusiness(selected.id))
+      setReloadNonce((current) => current + 1)
     } catch (error) {
       setDetailError(describeError(error))
     } finally {
@@ -202,12 +218,16 @@ export default function DataEntryPage() {
                   </div>
                 </div>
                 <BusinessForm
-                  key={selected.id}
+                  key={`${selected.id}-${reloadNonce}`}
                   mode="edit"
                   recordId={selected.id}
+                  version={selected.version}
                   initialValues={detailToFormValues(selected)}
                   onSaved={handleRecordSaved}
                   onCancel={() => setSelected(null)}
+                  onReload={() => {
+                    void reloadSelected()
+                  }}
                 />
               </div>
             ) : (

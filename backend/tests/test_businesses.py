@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import asyncpg
@@ -262,10 +263,12 @@ def test_researcher_can_create_and_update_a_record(api_client: TestClient) -> No
         assert body["updatedBy"] == "admin"
         assert body["createdAt"]
         assert body["updatedAt"]
+        assert body["version"] == 1
 
         detail = api_client.get(f"/api/v1/businesses/{record_id}")
         assert detail.status_code == 200
         assert detail.json()["notes"] == "Created through the researcher API."
+        assert detail.json()["version"] == 1
 
         updated = api_client.patch(
             f"/api/v1/businesses/{record_id}",
@@ -274,6 +277,7 @@ def test_researcher_can_create_and_update_a_record(api_client: TestClient) -> No
                 "notes": "Updated through the researcher API.",
                 "ifClosed": False,
                 "address": None,
+                "expectedVersion": body["version"],
             },
             headers={"Origin": ORIGIN},
         )
@@ -286,6 +290,94 @@ def test_researcher_can_create_and_update_a_record(api_client: TestClient) -> No
         assert updated_body["sourceYear"] == 1955
         assert updated_body["bizId"] == body["bizId"]
         assert updated_body["updatedBy"] == "admin"
+        assert updated_body["version"] == body["version"] + 1
+    finally:
+        _delete_record(record_id)
+
+
+def test_stale_update_is_rejected_without_overwriting(api_client: TestClient) -> None:
+    _log_in(api_client)
+    marker = f"concurrency-{uuid.uuid4().hex[:10]}"
+
+    created = api_client.post(
+        "/api/v1/businesses",
+        json={"businessName": f"Concurrency Test {marker}", "notes": "original"},
+        headers={"Origin": ORIGIN},
+    )
+    assert created.status_code == 201
+    record_id = created.json()["id"]
+    version = created.json()["version"]
+
+    try:
+        fresh = api_client.patch(
+            f"/api/v1/businesses/{record_id}",
+            json={"notes": "first editor", "expectedVersion": version},
+            headers={"Origin": ORIGIN},
+        )
+        assert fresh.status_code == 200
+        assert fresh.json()["notes"] == "first editor"
+        assert fresh.json()["version"] == version + 1
+
+        stale = api_client.patch(
+            f"/api/v1/businesses/{record_id}",
+            json={"notes": "stale changes", "expectedVersion": version},
+            headers={"Origin": ORIGIN},
+        )
+        assert stale.status_code == 409
+        assert "changed by someone else" in stale.json()["detail"]
+
+        after_conflict = api_client.get(f"/api/v1/businesses/{record_id}")
+        assert after_conflict.json()["notes"] == "first editor"
+        assert after_conflict.json()["version"] == version + 1
+
+        missing_token = api_client.patch(
+            f"/api/v1/businesses/{record_id}",
+            json={"notes": "no version sent"},
+            headers={"Origin": ORIGIN},
+        )
+        assert missing_token.status_code == 422
+
+        retry = api_client.patch(
+            f"/api/v1/businesses/{record_id}",
+            json={"notes": "second editor retry", "expectedVersion": version + 1},
+            headers={"Origin": ORIGIN},
+        )
+        assert retry.status_code == 200
+        assert retry.json()["notes"] == "second editor retry"
+        assert retry.json()["version"] == version + 2
+    finally:
+        _delete_record(record_id)
+
+
+def test_parallel_saves_of_the_same_version_only_one_wins(api_client: TestClient) -> None:
+    _log_in(api_client)
+    marker = f"parallel-{uuid.uuid4().hex[:10]}"
+
+    created = api_client.post(
+        "/api/v1/businesses",
+        json={"businessName": f"Parallel Test {marker}", "notes": "original"},
+        headers={"Origin": ORIGIN},
+    )
+    assert created.status_code == 201
+    record_id = created.json()["id"]
+    version = created.json()["version"]
+
+    def save(notes: str):
+        return api_client.patch(
+            f"/api/v1/businesses/{record_id}",
+            json={"notes": notes, "expectedVersion": version},
+            headers={"Origin": ORIGIN},
+        )
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            responses = list(executor.map(save, ["editor A", "editor B"]))
+
+        assert sorted(response.status_code for response in responses) == [200, 409]
+
+        detail = api_client.get(f"/api/v1/businesses/{record_id}")
+        assert detail.json()["notes"] in {"editor A", "editor B"}
+        assert detail.json()["version"] == version + 1
     finally:
         _delete_record(record_id)
 
@@ -319,7 +411,7 @@ def test_record_writes_reject_invalid_values_and_origins(api_client: TestClient)
     )
     missing_record = api_client.patch(
         "/api/v1/businesses/999999999",
-        json={"notes": "Nobody home"},
+        json={"notes": "Nobody home", "expectedVersion": 1},
         headers={"Origin": ORIGIN},
     )
 

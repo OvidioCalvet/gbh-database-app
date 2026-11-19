@@ -85,6 +85,7 @@ class BusinessDetail(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     id: int
+    version: int
     biz_id: str
     business_name: str
     source_year: int | None = None
@@ -177,7 +178,9 @@ class BusinessCreate(BusinessFields):
 
 
 class BusinessUpdate(BusinessFields):
-    pass
+    """Partial update plus the version the client originally read."""
+
+    expected_version: int = Field(alias="expectedVersion", ge=1)
 
 
 class BusinessPage(BaseModel):
@@ -211,6 +214,7 @@ def _clean_values(values: dict[str, object]) -> dict[str, object]:
 def _detail_from_row(row: asyncpg.Record) -> BusinessDetail:
     return BusinessDetail(
         id=row["id"],
+        version=row["version"],
         biz_id=row["biz_id"],
         business_name=row["biz_name"],
         source_year=row["source_year"],
@@ -400,33 +404,50 @@ async def update_business(
 ) -> BusinessDetail:
     require_allowed_origin(request)
     values = _clean_values(body.model_dump(exclude_unset=True))
+    expected_version = values.pop("expected_version")
 
     for required_field, label in (("business_name", "Business name"), ("biz_id", "Business ID")):
         if required_field in values and values[required_field] is None:
             raise HTTPException(status_code=422, detail=f"{label} cannot be empty.")
 
     async with pool.acquire() as connection:
-        if values:
-            fields = [field for field in values if field in _FIELD_TO_COLUMN]
-            parameters = [values[field] for field in fields]
-            assignments = [
-                f"{_FIELD_TO_COLUMN[field]} = ${index}"
-                for index, field in enumerate(fields, start=1)
+        fields = [field for field in values if field in _FIELD_TO_COLUMN]
+        parameters = [values[field] for field in fields]
+        assignments = [
+            f"{_FIELD_TO_COLUMN[field]} = ${index}"
+            for index, field in enumerate(fields, start=1)
+        ]
+        assignments.extend(
+            [
+                "version = version + 1",
+                "updated_at = NOW()",
+                f"updated_by = ${len(parameters) + 1}",
             ]
-            assignments.extend(["updated_at = NOW()", f"updated_by = ${len(parameters) + 1}"])
-            parameters.extend([user.user_id, record_id])
+        )
+        parameters.extend([user.user_id, record_id, expected_version])
 
-            updated_id = await connection.fetchval(
-                f"""
-                UPDATE businesses
-                SET {", ".join(assignments)}
-                WHERE id = ${len(parameters)}
-                RETURNING id
-                """,
-                *parameters,
+        updated_id = await connection.fetchval(
+            f"""
+            UPDATE businesses
+            SET {", ".join(assignments)}
+            WHERE id = ${len(parameters) - 1} AND version = ${len(parameters)}
+            RETURNING id
+            """,
+            *parameters,
+        )
+        if updated_id is None:
+            current_version = await connection.fetchval(
+                "SELECT version FROM businesses WHERE id = $1", record_id
             )
-            if updated_id is None:
+            if current_version is None:
                 raise HTTPException(status_code=404, detail="Business record not found.")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "This record was changed by someone else since you opened it. "
+                    "Reload the record before saving again."
+                ),
+            )
 
         row = await connection.fetchrow(_DETAIL_SELECT, record_id)
 
