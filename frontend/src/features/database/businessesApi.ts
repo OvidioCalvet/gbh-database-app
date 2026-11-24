@@ -70,6 +70,9 @@ export interface IndustryCount {
   count: number
 }
 
+export type GenderCount = IndustryCount
+export type RaceCount = IndustryCount
+
 export class BusinessesApiError extends Error {
   readonly status?: number
 
@@ -150,6 +153,8 @@ export interface BusinessQuery {
   limit: number
   query?: string
   industry?: string | null
+  gender?: string | null
+  race?: string | null
 }
 
 export async function fetchBusinesses(
@@ -168,6 +173,12 @@ export async function fetchBusinesses(
   if (params.industry) {
     search.set('industry', params.industry)
   }
+  if (params.gender) {
+    search.set('gender', params.gender)
+  }
+  if (params.race) {
+    search.set('race', params.race)
+  }
 
   return getJson<BusinessPage>(`/api/v1/businesses?${search.toString()}`, signal)
 }
@@ -177,6 +188,19 @@ export async function fetchIndustries(signal?: AbortSignal): Promise<IndustryCou
     '/api/v1/businesses/industries',
     signal,
   )
+  return result.items
+}
+
+export async function fetchGenders(signal?: AbortSignal): Promise<GenderCount[]> {
+  const result = await getJson<{ items: GenderCount[] }>(
+    '/api/v1/businesses/genders',
+    signal,
+  )
+  return result.items
+}
+
+export async function fetchRaces(signal?: AbortSignal): Promise<RaceCount[]> {
+  const result = await getJson<{ items: RaceCount[] }>('/api/v1/businesses/races', signal)
   return result.items
 }
 

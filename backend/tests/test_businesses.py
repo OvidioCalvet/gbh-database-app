@@ -196,6 +196,92 @@ def test_industry_list_is_available(api_client: TestClient) -> None:
         assert industry["count"] >= 1
 
 
+def test_search_and_filters_include_gender_and_race(api_client: TestClient) -> None:
+    settings = Settings.from_env()
+    marker = f"filters-{uuid.uuid4().hex[:10]}"
+    rows = [
+        (f"{marker} A", f"{marker} Male", f"{marker} Black", "Retail"),
+        (f"{marker} B", f"{marker} Female", f"{marker} White", "Retail"),
+        (f"{marker} C", f"{marker} Male {marker} Female", f"{marker} Black", "Food"),
+        (f"{marker} D", None, None, "Food"),
+    ]
+
+    async def seed() -> None:
+        pool = await create_pool(settings)
+        try:
+            async with pool.acquire() as connection:
+                await connection.executemany(
+                    """
+                    INSERT INTO businesses (source_row, biz_name, biz_id, gender, race, broad_industry)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    """,
+                    [
+                        (index, name, f"BIZ_{marker}_{index}", gender, race, industry)
+                        for index, (name, gender, race, industry) in enumerate(rows)
+                    ],
+                )
+        finally:
+            await pool.close()
+
+    async def cleanup() -> None:
+        pool = await create_pool(settings)
+        try:
+            async with pool.acquire() as connection:
+                await connection.execute(
+                    "DELETE FROM businesses WHERE biz_id LIKE $1", f"BIZ_{marker}_%"
+                )
+        finally:
+            await pool.close()
+
+    def fetched_names(**params: str) -> set[str]:
+        response = api_client.get("/api/v1/businesses", params={"q": marker, **params})
+        assert response.status_code == 200
+        return {item["businessName"] for item in response.json()["items"]}
+
+    def searched_names(term: str) -> set[str]:
+        response = api_client.get("/api/v1/businesses", params={"q": term, "limit": 100})
+        assert response.status_code == 200
+        return {item["businessName"] for item in response.json()["items"]}
+
+    asyncio.run(seed())
+    try:
+        assert fetched_names() == {row[0] for row in rows}
+
+        assert fetched_names(gender=f"{marker} male") == {rows[0][0]}
+        assert fetched_names(gender=f"{marker} female") == {rows[1][0]}
+        assert fetched_names(gender=f"{marker} Male {marker} Female") == {rows[2][0]}
+        assert fetched_names(race=f"{marker} BLACK") == {rows[0][0], rows[2][0]}
+        assert fetched_names(gender=f"{marker} male", race=f"{marker} black") == {rows[0][0]}
+
+        male_hits = searched_names(f"{marker} male")
+        assert rows[0][0] in male_hits
+        assert rows[2][0] in male_hits
+        assert rows[1][0] not in male_hits
+
+        female_hits = searched_names(f"{marker} FEMALE")
+        assert rows[1][0] in female_hits
+        assert rows[2][0] in female_hits
+        assert rows[0][0] not in female_hits
+
+        black_hits = searched_names(f"{marker} black")
+        assert rows[0][0] in black_hits
+        assert rows[2][0] in black_hits
+        assert rows[1][0] not in black_hits
+
+        gender_values = {
+            item["name"]
+            for item in api_client.get("/api/v1/businesses/genders").json()["items"]
+        }
+        assert {row[1] for row in rows if row[1]} <= gender_values
+        race_values = {
+            item["name"]
+            for item in api_client.get("/api/v1/businesses/races").json()["items"]
+        }
+        assert {row[2] for row in rows if row[2]} <= race_values
+    finally:
+        asyncio.run(cleanup())
+
+
 def _log_in(api_client: TestClient) -> None:
     response = api_client.post(
         "/api/v1/auth/login",

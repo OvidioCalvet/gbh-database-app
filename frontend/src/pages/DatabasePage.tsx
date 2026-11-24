@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react'
 import databaseHeroPhoto from '../assets/uf-research.jpg'
 import {
   fetchBusinesses,
+  fetchGenders,
   fetchIndustries,
+  fetchRaces,
   type BusinessPage,
+  type GenderCount,
   type IndustryCount,
+  type RaceCount,
 } from '../features/database/businessesApi'
 
 const PAGE_SIZE = 25
@@ -13,6 +17,8 @@ interface BusinessRequest {
   page: number
   query: string
   industry: string | null
+  gender: string | null
+  race: string | null
 }
 
 interface LoadedPage {
@@ -25,19 +31,74 @@ interface LoadFailure {
   message: string
 }
 
+interface FilterOption {
+  name: string
+  count: number
+}
+
+interface FilterButtonGroupProps {
+  id: string
+  heading: string
+  ariaLabel: string
+  options: FilterOption[]
+  selected: string | null
+  onSelect: (value: string | null) => void
+}
+
+function FilterButtonGroup({
+  id,
+  heading,
+  ariaLabel,
+  options,
+  selected,
+  onSelect,
+}: FilterButtonGroupProps) {
+  return (
+    <section className="database-category-filters" aria-labelledby={id}>
+      <h3 id={id}>{heading}</h3>
+      <div className="database-category-filters__buttons" role="group" aria-label={ariaLabel}>
+        <button
+          className={`database-category-button${selected === null ? ' database-category-button--active' : ''}`}
+          type="button"
+          aria-pressed={selected === null}
+          onClick={() => onSelect(null)}
+        >
+          All
+        </button>
+        {options.map((option) => (
+          <button
+            className={`database-category-button${selected === option.name ? ' database-category-button--active' : ''}`}
+            key={option.name}
+            type="button"
+            aria-pressed={selected === option.name}
+            title={`${option.count.toLocaleString()} records`}
+            onClick={() => onSelect(option.name)}
+          >
+            {option.name}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function DatabasePage() {
   const [searchInput, setSearchInput] = useState('')
   const [request, setRequest] = useState<BusinessRequest>({
     page: 1,
     query: '',
     industry: null,
+    gender: null,
+    race: null,
   })
   const [result, setResult] = useState<LoadedPage | null>(null)
   const [failure, setFailure] = useState<LoadFailure | null>(null)
   const [industries, setIndustries] = useState<IndustryCount[]>([])
+  const [genders, setGenders] = useState<GenderCount[]>([])
+  const [races, setRaces] = useState<RaceCount[]>([])
   const [reloadKey, setReloadKey] = useState(0)
 
-  const requestKey = `${request.page}\u0000${request.query}\u0000${request.industry ?? ''}\u0000${reloadKey}`
+  const requestKey = `${request.page}\u0000${request.query}\u0000${request.industry ?? ''}\u0000${request.gender ?? ''}\u0000${request.race ?? ''}\u0000${reloadKey}`
   const loading = !(result?.key === requestKey || failure?.key === requestKey)
   const error = failure?.key === requestKey ? failure.message : null
   const pageData = result?.key === requestKey ? result.data : null
@@ -47,7 +108,9 @@ export default function DatabasePage() {
   const firstVisibleRecord = total === 0 ? 0 : (request.page - 1) * PAGE_SIZE + 1
   const lastVisibleRecord = Math.min(request.page * PAGE_SIZE, total)
   const visibleRecords = pageData?.items ?? []
-  const hasFilters = Boolean(searchInput.trim() || request.industry)
+  const hasFilters = Boolean(
+    searchInput.trim() || request.industry || request.gender || request.race,
+  )
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -72,6 +135,8 @@ export default function DatabasePage() {
         limit: PAGE_SIZE,
         query: request.query,
         industry: request.industry,
+        gender: request.gender,
+        race: request.race,
       },
       controller.signal,
     )
@@ -114,6 +179,16 @@ export default function DatabasePage() {
       .catch(() => {
         // The records table still works when the filter list cannot be loaded.
       })
+    fetchGenders(controller.signal)
+      .then(setGenders)
+      .catch(() => {
+        // The records table still works when the filter list cannot be loaded.
+      })
+    fetchRaces(controller.signal)
+      .then(setRaces)
+      .catch(() => {
+        // The records table still works when the filter list cannot be loaded.
+      })
 
     return () => controller.abort()
   }, [])
@@ -132,12 +207,32 @@ export default function DatabasePage() {
     )
   }
 
+  function selectGender(gender: string | null) {
+    setRequest((current) =>
+      current.gender === gender && current.page === 1
+        ? current
+        : { ...current, gender, page: 1 },
+    )
+  }
+
+  function selectRace(race: string | null) {
+    setRequest((current) =>
+      current.race === race && current.page === 1
+        ? current
+        : { ...current, race, page: 1 },
+    )
+  }
+
   function clearFilters() {
     setSearchInput('')
     setRequest((current) =>
-      current.query === '' && current.industry === null && current.page === 1
+      current.query === '' &&
+      current.industry === null &&
+      current.gender === null &&
+      current.race === null &&
+      current.page === 1
         ? current
-        : { page: 1, query: '', industry: null },
+        : { page: 1, query: '', industry: null, gender: null, race: null },
     )
   }
 
@@ -162,7 +257,7 @@ export default function DatabasePage() {
           <p className="eyebrow">Explore the collection</p>
           <h1 id="database-hero-title">Gainesville Business History Database</h1>
           <p className="hero-section__description">
-            Search historical business records by name, industry, decade, and source year.
+            Search historical business records by name, owner, address, industry, gender, and race.
           </p>
         </div>
       </section>
@@ -173,7 +268,7 @@ export default function DatabasePage() {
             <p className="eyebrow">Public records</p>
             <h2 id="database-explorer-title">Browse the database</h2>
             <p className="database-explorer__description">
-              Search live records by business name, owner, address, or industry.
+              Search live records by business name, owner, address, industry, gender, or race.
             </p>
           </div>
           <p className="database-preview-note">
@@ -193,7 +288,7 @@ export default function DatabasePage() {
               type="search"
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Search business names, owners, addresses, and industries"
+              placeholder="Search business names, owners, addresses, industries, genders, and races"
               autoComplete="off"
             />
             {searchInput && (
@@ -204,35 +299,30 @@ export default function DatabasePage() {
           </div>
         </form>
 
-        <section className="database-category-filters" aria-labelledby="category-filter-title">
-          <h3 id="category-filter-title">Browse by broad industry</h3>
-          <div
-            className="database-category-filters__buttons"
-            role="group"
-            aria-label="Filter by broad industry"
-          >
-            <button
-              className={`database-category-button${request.industry === null ? ' database-category-button--active' : ''}`}
-              type="button"
-              aria-pressed={request.industry === null}
-              onClick={() => selectIndustry(null)}
-            >
-              All
-            </button>
-            {industries.map((industry) => (
-              <button
-                className={`database-category-button${request.industry === industry.name ? ' database-category-button--active' : ''}`}
-                key={industry.name}
-                type="button"
-                aria-pressed={request.industry === industry.name}
-                title={`${industry.count.toLocaleString()} records`}
-                onClick={() => selectIndustry(industry.name)}
-              >
-                {industry.name}
-              </button>
-            ))}
-          </div>
-        </section>
+        <FilterButtonGroup
+          id="category-filter-title"
+          heading="Browse by broad industry"
+          ariaLabel="Filter by broad industry"
+          options={industries}
+          selected={request.industry}
+          onSelect={selectIndustry}
+        />
+        <FilterButtonGroup
+          id="gender-filter-title"
+          heading="Browse by gender"
+          ariaLabel="Filter by gender"
+          options={genders}
+          selected={request.gender}
+          onSelect={selectGender}
+        />
+        <FilterButtonGroup
+          id="race-filter-title"
+          heading="Browse by race"
+          ariaLabel="Filter by race"
+          options={races}
+          selected={request.race}
+          onSelect={selectRace}
+        />
 
         <div className="database-results__summary" aria-live="polite" aria-atomic="true">
           <p>

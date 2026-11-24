@@ -45,8 +45,10 @@ Query parameters:
 
 - `offset` — zero-based row offset, default `0`
 - `limit` — page size from `1` to `100`, default `25`
-- `q` — optional case-insensitive search across business name, owner, address, and industry
+- `q` — optional case-insensitive search across business name, owner, address, broad and specific industry, gender, and race. Gender/race words match whole values, so `male` does not match `female`.
 - `industry` — optional exact `broad_industry` filter
+- `gender` — optional case-insensitive exact filter on `gender` (for example `Male`, `Female`, or `Male/Female`)
+- `race` — optional case-insensitive exact filter on `race`
 
 Response:
 
@@ -80,6 +82,10 @@ Returns the distinct broad industries and their record counts, ordered by count 
 ```json
 { "items": [{ "name": "Retail Trade", "count": 1234 }] }
 ```
+
+## `GET /api/v1/businesses/genders` and `GET /api/v1/businesses/races`
+
+Return the same `{ "items": [{ "name": ..., "count": ... }] }` shape for the distinct stored gender and race values. These populate the Gender and Race filter buttons.
 
 ## `GET /api/v1/businesses/{id}`
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 
@@ -204,6 +205,11 @@ def _like_pattern(value: str) -> str:
     return f"%{escaped}%"
 
 
+def _word_pattern(value: str) -> str:
+    """Whole-word regex for gender/race so "male" does not match "female"."""
+    return rf"(^|[^[:alnum:]]){re.escape(value)}([^[:alnum:]]|$)"
+
+
 def _clean_values(values: dict[str, object]) -> dict[str, object]:
     return {
         field: None if isinstance(value, str) and not value.strip() else value
@@ -267,6 +273,8 @@ async def list_businesses(
     limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     q: str | None = Query(default=None, max_length=200),
     industry: str | None = Query(default=None, max_length=200),
+    gender: str | None = Query(default=None, max_length=200),
+    race: str | None = Query(default=None, max_length=200),
     pool: asyncpg.Pool = Depends(get_pool),
 ) -> BusinessPage:
     conditions: list[str] = []
@@ -275,20 +283,32 @@ async def list_businesses(
     query = (q or "").strip()
     if query:
         parameters.append(_like_pattern(query))
-        placeholder = f"${len(parameters)}"
+        like_placeholder = f"${len(parameters)}"
+        parameters.append(_word_pattern(query))
+        word_placeholder = f"${len(parameters)}"
         searchable = ("biz_name", "owner_name", "address", "industry1", "broad_industry")
-        conditions.append(
-            "("
-            + " OR ".join(
-                f"{column} ILIKE {placeholder} ESCAPE '\\'" for column in searchable
-            )
-            + ")"
+        text_condition = " OR ".join(
+            f"{column} ILIKE {like_placeholder} ESCAPE '\\'" for column in searchable
         )
+        demographic_condition = " OR ".join(
+            f"{column} ~* {word_placeholder}" for column in ("gender", "race")
+        )
+        conditions.append(f"({text_condition} OR {demographic_condition})")
 
     selected_industry = (industry or "").strip()
     if selected_industry:
         parameters.append(selected_industry)
         conditions.append(f"broad_industry = ${len(parameters)}")
+
+    selected_gender = (gender or "").strip()
+    if selected_gender:
+        parameters.append(selected_gender)
+        conditions.append(f"LOWER(gender) = LOWER(${len(parameters)})")
+
+    selected_race = (race or "").strip()
+    if selected_race:
+        parameters.append(selected_race)
+        conditions.append(f"LOWER(race) = LOWER(${len(parameters)})")
 
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
@@ -330,15 +350,15 @@ async def list_businesses(
     return BusinessPage(items=items, total=total, offset=offset, limit=limit)
 
 
-@router.get("/industries", response_model=IndustryList)
-async def list_industries(pool: asyncpg.Pool = Depends(get_pool)) -> IndustryList:
+async def _filter_values(column: str, pool: asyncpg.Pool) -> IndustryList:
+    """Distinct non-null values and counts for a filter button group."""
     async with pool.acquire() as connection:
         rows = await connection.fetch(
-            """
-            SELECT broad_industry AS name, COUNT(*) AS count
+            f"""
+            SELECT {column} AS name, COUNT(*) AS count
             FROM businesses
-            WHERE broad_industry IS NOT NULL
-            GROUP BY broad_industry
+            WHERE {column} IS NOT NULL
+            GROUP BY {column}
             ORDER BY count DESC, name ASC
             """
         )
@@ -346,6 +366,21 @@ async def list_industries(pool: asyncpg.Pool = Depends(get_pool)) -> IndustryLis
     return IndustryList(
         items=[IndustryCount(name=row["name"], count=row["count"]) for row in rows]
     )
+
+
+@router.get("/industries", response_model=IndustryList)
+async def list_industries(pool: asyncpg.Pool = Depends(get_pool)) -> IndustryList:
+    return await _filter_values("broad_industry", pool)
+
+
+@router.get("/genders", response_model=IndustryList)
+async def list_genders(pool: asyncpg.Pool = Depends(get_pool)) -> IndustryList:
+    return await _filter_values("gender", pool)
+
+
+@router.get("/races", response_model=IndustryList)
+async def list_races(pool: asyncpg.Pool = Depends(get_pool)) -> IndustryList:
+    return await _filter_values("race", pool)
 
 
 @router.get("/{record_id}", response_model=BusinessDetail)
