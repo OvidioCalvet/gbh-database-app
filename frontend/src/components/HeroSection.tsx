@@ -11,10 +11,10 @@ export default function HeroSection() {
       <div className="hero-section__content">
         <p className="eyebrow">Gainesville Business History</p>
         <h1 id="hero-title">
-          A collection of interviews with local business owners in Gainesville, FL.
+            Uncovering Gainesville's economic and business past.
         </h1>
         <p className="hero-section__description">
-          Explore the people, places, and stories behind Gainesville’s business history.
+          Explore the people, places, and stories behind Gainesville's economic and business life since the 1960's.
         </p>
         <a className="hero-section__action" href="#featured-stories">
           Explore featured stories <span aria-hidden="true">→</span>
